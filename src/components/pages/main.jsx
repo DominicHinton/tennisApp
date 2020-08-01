@@ -5,8 +5,8 @@ import StandardMatch from "../scoring/standardmatch";
 
 function Main() {
     return (
-        <div>
-            <h1>Tennis App</h1>
+        <div class="match-display">
+            <h1 class="title">Tennis Match</h1>
             <StandardMatch />
             
         </div>
