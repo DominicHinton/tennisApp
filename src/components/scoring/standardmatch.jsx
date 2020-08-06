@@ -2,14 +2,15 @@
 // 1) Tie break not working. (Take a set to 5 games all, then take to 6 - 6, we observe normal games and end up playing long set.)
 // 2) Extra click needed at the end of each game to lake scores to 0 and start new game, same issue with sets.
 
-import React, {useState} from "react";
+import React, {useState, useEffect} from "react";
 import players from "./players";
 
 function StandardMatch() {
-
+    console.log("render");
     //Best of how many sets
     let numberOfSets = 3;
     let setsToWin = 0;
+    //re-factor this
     while (2 * setsToWin < numberOfSets) {
         setsToWin++;
     }
@@ -17,35 +18,56 @@ function StandardMatch() {
     let decideWithTieBreakers = true;
     //No tie breaker in final set
     let longFinalSet = true;
-    //Boolean to aid implementing tie breaker
-    let gameIsTieBreak = false;
+    //Boolean to aid implementing tie breaker 
+    const [gameIsTieBreak, updateGameIsTieBreak] = useState(false);
     //Deal with points to win normal game or tie break (4 or 7)
     let winningPoints;
     
     //Points
     const [player1Points, updatePlayer1Points] = useState(0);
+    useEffect(function() {
+        console.log("useEffect  on first render.");
+    },[] );
     const [player2Points, updatePlayer2Points] = useState(0);
-
+    console.log("before update player1: ", player1Points);
+    useEffect(function() {
+        checkGameWinner()
+    }, [player1Points, player2Points]);
     function player1Point() {
+        
         updatePlayer1Points(player1Points + 1);
-        checkGameWinner();
+        console.log("after update player1: ", player1Points);
+        // checkGameWinner();
     }
     function player2Point() {
         updatePlayer2Points(player2Points + 1);
-        checkGameWinner();
+        // checkGameWinner();
     }
 
     //Games
     const [player1Games, updatePlayer1Games] = useState(0);
     const [player2Games, updatePlayer2Games] = useState(0);
 
+    //useEffect here
+    useEffect(function() {
+        checkSetWinner()
+    }, [player1Games, player2Games]);
+
+    useEffect(function() {
+        checkSetWinner()
+    }, gameIsTieBreak);
+    
     function checkGameWinner() {
         if (gameIsTieBreak) {
             winningPoints = 7;
         } else {
             winningPoints = 4;
         }
-        if (player1Points - player2Points >= 2 && player1Points >= winningPoints) {
+        const player1TwoAhead = player1Points - player2Points >= 2;
+        const Player1EnoughToWin = player1Points >= winningPoints;
+        console.log("At Checkpoint 1 ",{player1TwoAhead, Player1EnoughToWin, player1Points, player2Points});
+
+        if (player1TwoAhead && Player1EnoughToWin) {
             updatePlayer1Games(player1Games + 1);
             updatePlayer1Points(0);
             updatePlayer2Points(0);
@@ -64,45 +86,47 @@ function StandardMatch() {
     const [player1Sets, updatePlayer1Sets] = useState(0);
     const [player2Sets, updatePlayer2Sets] = useState(0);
 
+    //useEffect here
+    useEffect(function() {
+        checkMatchWinner()
+    }, [player1Sets, player2Sets]);
+
     function checkSetWinner() {
         //Check if just played a tie break and award set to winner
         if (gameIsTieBreak) {
-            if (player1Games === 7 && player2Games === 6)
+            const signal = player1Games - player2Games;
+            if (signal === 1)
             {
                 updatePlayer1Sets(player1Sets + 1);
-                checkMatchWinner();
-                if (player1Sets < setsToWin) {
-                    updatePlayer1Games(0);
-                    updatePlayer2Games(0);
-                }
             }
-            if (player2Games === 7 && player1Games === 6)
+            else if (signal === -1)
             {
                 updatePlayer2Sets(player2Sets + 1);
-                checkMatchWinner();
-                if (player2Sets < setsToWin) {
-                    updatePlayer1Games(0);
-                    updatePlayer2Games(0);
-                }
             }
+            else {
+                console.log("Error! After a Tiebreak", player1Games, player2Games);
+            }
+            updatePlayer1Games(0);
+            updatePlayer2Games(0);
+            updateGameIsTieBreak(false);
+            return;
         }
         //Check if next game needs to be a tie break
         if (decideWithTieBreakers === true && player1Games === 6 && player2Games === 6 && (!longFinalSet || player1Sets + player2Sets + 1 < numberOfSets )) {
-            gameIsTieBreak = true;
-        } else {
-            gameIsTieBreak = false;
+            //useState here
+            updateGameIsTieBreak(true);
+            } else {
+            updateGameIsTieBreak(false);
         }
         // if last game wasn't a tie break and next game doesn't need to be
         if (player1Games >= 6 && player1Games - player2Games >= 2) {
             updatePlayer1Sets(player1Sets + 1);
-            checkMatchWinner();
             if (player1Sets < setsToWin) {
                 updatePlayer1Games(0);
                 updatePlayer2Games(0);
             }
         } else if (player2Games >= 6 && player2Games - player1Games >= 2) {
             updatePlayer2Sets(player2Sets + 1);
-            checkMatchWinner();
             if (player2Sets < setsToWin) {
                 updatePlayer1Games(0);
                 updatePlayer2Games(0);
@@ -112,6 +136,8 @@ function StandardMatch() {
     }
 
     //Match
+
+    //useEffect here
     function checkMatchWinner() {
         if (player1Sets >= setsToWin) {
             updatePlayer1Points("Winner");
@@ -193,7 +219,14 @@ function StandardMatch() {
                     <div class="col-mid-3">
                         <h4>{pointsDisplay(player1Points, player2Points)[0]}</h4>
                     </div>
-                </div>    
+                </div>
+                {/* <div class="row">
+                    <div class="col-mid-3">
+                        <input type="checkbox" label="Ace" value="Ace" name="Aces" /> <label for="Ace">Aces</label>
+                        <input type="checkbox" label="Ace" />
+                        <input type="checkbox" label="Ace" />
+                    </div>
+                </div>     */}
             </div>
             <hr class="divider"/>
             <div class="player">
