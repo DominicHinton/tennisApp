@@ -4,8 +4,8 @@ import StandardMatch from "../scoring/standardmatch";
 
 function Main() {
     return (
-        <div class="match-display">
-            <h1 class="title">Tennis Match</h1>
+        <div className="match-display">
+            <h1 className="title">Tennis Match</h1>
             <StandardMatch />
             
         </div>

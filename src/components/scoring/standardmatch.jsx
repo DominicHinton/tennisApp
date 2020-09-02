@@ -1,6 +1,10 @@
 // Logic mostly working - problems as follows:
-// 1) Tie break not working. (Take a set to 5 games all, then take to 6 - 6, we observe normal games and end up playing long set.)
-// 2) Extra click needed at the end of each game to lake scores to 0 and start new game, same issue with sets.
+// 1) Bug reversing value of variable "player1IsServing" before match starts
+
+//TODO
+//Use a Form to capture detailed stats about points
+//Update gameStats Object using form details at end of each point
+//Implement logic for break points, breaks of serve etc
 
 import React, {useState, useEffect} from "react";
 import players from "./players";
@@ -20,8 +24,9 @@ function StandardMatch() {
     let longFinalSet = true;
     //Boolean to aid implementing tie breaker 
     const [gameIsTieBreak, updateGameIsTieBreak] = useState(false);
-    //Player1 Can Start As Server for testing
-    const [player1IsServing, updatePlayer1IsServing] = useState(true);
+    //Player1 Can Start As Server for testing - I have a bug reversing value before match starts, setting to false to temporarily fix till bug found.
+    const [player1IsServing, updatePlayer1IsServing] = useState(false);
+    const [player1StartedTieBreak, updatePlayer1StartedTieBreak] = useState(true);
     //Deal with points to win normal game or tie break (4 or 7)
     let winningPoints;
     //Previous Set Scores for Display
@@ -61,11 +66,7 @@ function StandardMatch() {
     
     //Points
     const [player1Points, updatePlayer1Points] = useState(0);
-    useEffect(function() {
-        console.log("useEffect  on first render.");
-    },[] );
     const [player2Points, updatePlayer2Points] = useState(0);
-    console.log("before update player1: ", player1Points);
     
     //Games
     const [player1Games, updatePlayer1Games] = useState(0);
@@ -80,21 +81,28 @@ function StandardMatch() {
     //PlayerPoints from clicker
     function player1Point() {
         updatePlayer1Points(player1Points + 1);
-        console.log("after update player1: ", player1Points);
+        console.log(gameStats);
     }
     function player2Point() {
         updatePlayer2Points(player2Points + 1);
+        console.log(gameStats);
     }
     //Check if someone won the game
     function checkGameWinner() {
         if (gameIsTieBreak) {
             winningPoints = 7;
+            //After first point of tie break, save which player started serving the tie break to allow for determination of server in next set.
+            updatePlayer1StartedTieBreak(player1IsServing);
+
+            //In tie break, server changes after odd points
+            if ((player1Points + player2Points) % 2 != 0) {
+                updatePlayer1IsServing(!player1IsServing);
+            }
         } else {
             winningPoints = 4;
         }
         const player1TwoAhead = player1Points - player2Points >= 2;
         const Player1EnoughToWin = player1Points >= winningPoints;
-        console.log("At Checkpoint 1 ",{player1TwoAhead, Player1EnoughToWin, player1Points, player2Points});
 
         if (player1TwoAhead && Player1EnoughToWin) {
             updatePlayer1Games(player1Games + 1);
@@ -114,6 +122,7 @@ function StandardMatch() {
         updatePlayer1IsServing(!player1IsServing);
         //Check if just played a tie break and award set to winner
         if (gameIsTieBreak) {
+            updatePlayer1IsServing(!player1StartedTieBreak);
             const signal = player1Games - player2Games;
             if (signal === 1)
             {
@@ -186,7 +195,7 @@ function StandardMatch() {
     //Test if superfluous later
     useEffect(function() {
         checkSetWinner()
-    }, gameIsTieBreak);
+    }, [gameIsTieBreak]);
 
     useEffect(function() {
         checkMatchWinner()
@@ -229,109 +238,127 @@ function StandardMatch() {
             }
             return [pointsOne, pointsTwo];
         }
-
     }
+
+    //player1Serving
+    function displayPlayer1Serving() {
+        if (player1IsServing) {
+            return "player1 is Serving";
+        }
+        else {
+            return "player2 is Serving";
+        }
+    }
+
     // return jsx for rendering
     return (
         <div>
-            <div class="player">
-                <div class="row">
-                    <div class="col-mid-1 padding-right-3">
+            <div className="player">
+                <div className="row">
+                    <div className="col-mid-1 padding-right-3">
                         <button onClick={player1Point}>+</button>
                     </div>
-                    <div class="col-mid-5">
+                    <div className="col-mid-5">
                         <h3>{players[0]}</h3>
                     </div>
+                    <div className="col-small-1">
+                        {player1IsServing && <p>*</p>}
+                    </div>
                 </div>
-                <div class="row">
-                    <div class="col-mid-3">
+                <div className="row">
+                    <div className="col-mid-3">
                         <h4>Sets</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>Games</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>Points</h4>
                     </div>
-                    <div class="col-mid-1"></div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-1"></div>
+                    <div className="col-mid-3">
                         <h4>Previous Sets</h4>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-mid-3">
+                <div className="row">
+                    <div className="col-mid-3">
                         <h4>{player1Sets}</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>{player1Games}</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>{pointsDisplay(player1Points, player2Points)[0]}</h4>
                     </div>
-                    <div class="col-mid-1"></div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-1"></div>
+                    <div className="col-mid-3">
                         <h4>{player1PreviousSets}</h4>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-mid-3">
-                        <input type="checkbox" label="Ace1" value="Ace1" name="Ace1" /> <label for="Ace1">Ace</label>
+                <div className="row">
+                    <div className="col-mid-3">
+                        <input type="checkbox" label="Ace1" value="Ace1" name="Ace1" /> <label htmlFor="Ace1">Ace</label>
                     </div>
-                    <div class="col-mid-3">
-                        <input type="checkbox" label="SecondServe1" value="SecondServe1" name="SecondServe1" /> <label for="SecondServe1">Second Serve</label>
+                    <div className="col-mid-3">
+                        <input type="checkbox" label="SecondServe1" value="SecondServe1" name="SecondServe1" /> <label htmlFor="SecondServe1">Second Serve</label>
                     </div>
-                    <div class="col-mid-3">
-                        <input type="checkbox" label="DoubleFault1" value="DoubleFault1" name="DoubleFault1" /> <label for="DoubleFault1">Double Fault</label>
+                    <div className="col-mid-3">
+                        <input type="checkbox" label="DoubleFault1" value="DoubleFault1" name="DoubleFault1" /> <label htmlFor="DoubleFault1">Double Fault</label>
                     </div>
-                    <div class="col-mid-3">
-                        <input type="checkbox" label="Winner1" value="Winner1" name="Winner1" /> <label for="Winner1e">Winner</label>
+                    <div className="col-mid-3">
+                        <input type="checkbox" label="Winner1" value="Winner1" name="Winner1" /> <label htmlFor="Winner1e">Winner</label>
                     </div>
-                    <div class="col-mid-3">                        
-                        <input type="checkbox" label="UnforcedError1" value="UnforcedError1" name="UnforcedError1" /> <label for="UnforcedError1">Unforced Error</label>
+                    <div className="col-mid-3">                        
+                        <input type="checkbox" label="UnforcedError1" value="UnforcedError1" name="UnforcedError1" /> <label htmlFor="UnforcedError1">Unforced Error</label>
                     </div>
                 </div>     
             </div>
-            <hr class="divider"/>
-            <div class="player">
-                <div class="row">
-                    <div class="col-mid-1 padding-right-3">
+            <hr className="divider"/>
+            <div className="player">
+                <div className="row">
+                    <div className="col-mid-1 padding-right-3">
                         <button onClick={player2Point}>+</button>
+                        
                     </div>
-                    <div class="col-mid-5">
-                        <h3>{players[1]}</h3>
+                    <div className="col-mid-5">
+                        <h3>{players[1]}  </h3>
+                    </div>
+                    <div className="col-small-1">
+                        {!player1IsServing && <p>*</p>}
                     </div>
                 </div>      
-                <div class="row">
-                    <div class="col-mid-3">
+                <div className="row">
+                    <div className="col-mid-3">
                         <h4>Sets</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>Games</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>Points</h4>
                     </div>
-                    <div class="col-mid-1"></div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-1"></div>
+                    <div className="col-mid-3">
                         <h4>Previous Sets</h4>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-mid-3">
+                <div className="row">
+                    <div className="col-mid-3">
                         <h4>{player2Sets}</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>{player2Games}</h4>
                     </div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-3">
                         <h4>{pointsDisplay(player1Points, player2Points)[1]}</h4>
                     </div>
-                    <div class="col-mid-1"></div>
-                    <div class="col-mid-3">
+                    <div className="col-mid-1"></div>
+                    <div className="col-mid-3">
                         <h4>{player2PreviousSets}</h4>
                     </div>
                 </div>                  
             </div>
+            <hr className="divider"/>
         </div>
     );
 }
