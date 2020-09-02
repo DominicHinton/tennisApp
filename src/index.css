@@ -16,6 +16,7 @@ h1 {
   text-align: center;
 }
 
+
 .player {
   background-color: #007000;
   color: #fff70a;
@@ -37,6 +38,10 @@ h1 {
 
 .padding-right-3 {
   padding-right: 3%
+}
+
+.padding-5 {
+  padding: 5%
 }
 
 .centred {

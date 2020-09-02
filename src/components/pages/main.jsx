@@ -2,7 +2,6 @@ import React from "react";
 import players from "../scoring/players"
 import StandardMatch from "../scoring/standardmatch";
 
-
 function Main() {
     return (
         <div class="match-display">

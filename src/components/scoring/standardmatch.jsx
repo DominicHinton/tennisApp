@@ -20,8 +20,44 @@ function StandardMatch() {
     let longFinalSet = true;
     //Boolean to aid implementing tie breaker 
     const [gameIsTieBreak, updateGameIsTieBreak] = useState(false);
+    //Player1 Can Start As Server for testing
+    const [player1IsServing, updatePlayer1IsServing] = useState(true);
     //Deal with points to win normal game or tie break (4 or 7)
     let winningPoints;
+    //Previous Set Scores for Display
+    let [player1PreviousSets, updatePlayer1PreviousSets] = useState([]);
+    let [player2PreviousSets, updatePlayer2PreviousSets] = useState([]);
+
+    
+
+    //Object for handling stats
+    let gameStats = {
+        match : {
+            sets : 0,
+            games : 0,
+            points : 0,
+            breaksOfServe : 0
+        },
+        player1 : {
+            sets : 0,
+            tieBreaksWon : 0,
+            gamesWon : 0,
+            pointsWon : 0,
+            brokeOpponentServe : 0,
+            brokenOnOwnServe : 0,
+            firstServePointsPlayed : 0,
+            secondServePointsPlayed : 0,
+            breakPointsPlayedOnServe : 0,
+            breakPointsPlayedOnReturn : 0,
+            breakPointsWonOnServe : 0,
+            breakPointsWonOnReturn : 0,
+            aces : 0,
+            doubleFaults : 0,
+            winners : 0,
+            unforcedErrors : 0
+
+        }
+    }
     
     //Points
     const [player1Points, updatePlayer1Points] = useState(0);
@@ -30,33 +66,26 @@ function StandardMatch() {
     },[] );
     const [player2Points, updatePlayer2Points] = useState(0);
     console.log("before update player1: ", player1Points);
-    useEffect(function() {
-        checkGameWinner()
-    }, [player1Points, player2Points]);
-    function player1Point() {
-        
-        updatePlayer1Points(player1Points + 1);
-        console.log("after update player1: ", player1Points);
-        // checkGameWinner();
-    }
-    function player2Point() {
-        updatePlayer2Points(player2Points + 1);
-        // checkGameWinner();
-    }
-
+    
     //Games
     const [player1Games, updatePlayer1Games] = useState(0);
     const [player2Games, updatePlayer2Games] = useState(0);
 
-    //useEffect here
-    useEffect(function() {
-        checkSetWinner()
-    }, [player1Games, player2Games]);
+    //Sets
+    const [player1Sets, updatePlayer1Sets] = useState(0);
+    const [player2Sets, updatePlayer2Sets] = useState(0);
 
-    useEffect(function() {
-        checkSetWinner()
-    }, gameIsTieBreak);
-    
+    //Functions
+
+    //PlayerPoints from clicker
+    function player1Point() {
+        updatePlayer1Points(player1Points + 1);
+        console.log("after update player1: ", player1Points);
+    }
+    function player2Point() {
+        updatePlayer2Points(player2Points + 1);
+    }
+    //Check if someone won the game
     function checkGameWinner() {
         if (gameIsTieBreak) {
             winningPoints = 7;
@@ -71,37 +100,32 @@ function StandardMatch() {
             updatePlayer1Games(player1Games + 1);
             updatePlayer1Points(0);
             updatePlayer2Points(0);
-            checkSetWinner();
         } else if (player2Points - player1Points >= 2 && player2Points >= winningPoints) {
             updatePlayer2Games(player2Games + 1)
             updatePlayer1Points(0);
             updatePlayer2Points(0);
-            checkSetWinner();
         } else {
             console.log(player1Points + " - " + player2Points);
         }
     }
-
-    //Sets
-    const [player1Sets, updatePlayer1Sets] = useState(0);
-    const [player2Sets, updatePlayer2Sets] = useState(0);
-
-    //useEffect here
-    useEffect(function() {
-        checkMatchWinner()
-    }, [player1Sets, player2Sets]);
-
+    //Games has ended: Check if someone won the set, change server & handle 6-6 if tiebreak is needed
     function checkSetWinner() {
+        //Change the server
+        updatePlayer1IsServing(!player1IsServing);
         //Check if just played a tie break and award set to winner
         if (gameIsTieBreak) {
             const signal = player1Games - player2Games;
             if (signal === 1)
             {
                 updatePlayer1Sets(player1Sets + 1);
+                updatePlayer1PreviousSets(player1PreviousSets => [...player1PreviousSets, player1Games]);
+                updatePlayer2PreviousSets(player2PreviousSets => [...player2PreviousSets, player2Games]);
             }
             else if (signal === -1)
             {
                 updatePlayer2Sets(player2Sets + 1);
+                updatePlayer1PreviousSets(player1PreviousSets => [...player1PreviousSets, player1Games]);
+                updatePlayer2PreviousSets(player2PreviousSets => [...player2PreviousSets, player2Games]);
             }
             else {
                 console.log("Error! After a Tiebreak", player1Games, player2Games);
@@ -121,12 +145,16 @@ function StandardMatch() {
         // if last game wasn't a tie break and next game doesn't need to be
         if (player1Games >= 6 && player1Games - player2Games >= 2) {
             updatePlayer1Sets(player1Sets + 1);
+            updatePlayer1PreviousSets(player1PreviousSets => [...player1PreviousSets, player1Games]);
+            updatePlayer2PreviousSets(player2PreviousSets => [...player2PreviousSets, player2Games]);
             if (player1Sets < setsToWin) {
                 updatePlayer1Games(0);
                 updatePlayer2Games(0);
             }
         } else if (player2Games >= 6 && player2Games - player1Games >= 2) {
             updatePlayer2Sets(player2Sets + 1);
+            updatePlayer1PreviousSets(player1PreviousSets => [...player1PreviousSets, player1Games]);
+            updatePlayer2PreviousSets(player2PreviousSets => [...player2PreviousSets, player2Games]);
             if (player2Sets < setsToWin) {
                 updatePlayer1Games(0);
                 updatePlayer2Games(0);
@@ -134,10 +162,7 @@ function StandardMatch() {
 
         }  
     }
-
-    //Match
-
-    //useEffect here
+    //Check if match is won
     function checkMatchWinner() {
         if (player1Sets >= setsToWin) {
             updatePlayer1Points("Winner");
@@ -149,6 +174,26 @@ function StandardMatch() {
         }
     }
 
+    //Use effect
+    useEffect(function() {
+        checkGameWinner()
+    }, [player1Points, player2Points]);
+
+    useEffect(function() {
+        checkSetWinner()
+    }, [player1Games, player2Games]);
+
+    //Test if superfluous later
+    useEffect(function() {
+        checkSetWinner()
+    }, gameIsTieBreak);
+
+    useEffect(function() {
+        checkMatchWinner()
+    }, [player1Sets, player2Sets]);    
+    
+
+    //Display points tennis style
     function pointsDisplay(p1, p2) {
         //In tie-break, just return the points as they stand
         if (gameIsTieBreak) {
@@ -186,7 +231,7 @@ function StandardMatch() {
         }
 
     }
-
+    // return jsx for rendering
     return (
         <div>
             <div class="player">
@@ -208,6 +253,10 @@ function StandardMatch() {
                     <div class="col-mid-3">
                         <h4>Points</h4>
                     </div>
+                    <div class="col-mid-1"></div>
+                    <div class="col-mid-3">
+                        <h4>Previous Sets</h4>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col-mid-3">
@@ -219,14 +268,28 @@ function StandardMatch() {
                     <div class="col-mid-3">
                         <h4>{pointsDisplay(player1Points, player2Points)[0]}</h4>
                     </div>
-                </div>
-                {/* <div class="row">
+                    <div class="col-mid-1"></div>
                     <div class="col-mid-3">
-                        <input type="checkbox" label="Ace" value="Ace" name="Aces" /> <label for="Ace">Aces</label>
-                        <input type="checkbox" label="Ace" />
-                        <input type="checkbox" label="Ace" />
+                        <h4>{player1PreviousSets}</h4>
                     </div>
-                </div>     */}
+                </div>
+                <div class="row">
+                    <div class="col-mid-3">
+                        <input type="checkbox" label="Ace1" value="Ace1" name="Ace1" /> <label for="Ace1">Ace</label>
+                    </div>
+                    <div class="col-mid-3">
+                        <input type="checkbox" label="SecondServe1" value="SecondServe1" name="SecondServe1" /> <label for="SecondServe1">Second Serve</label>
+                    </div>
+                    <div class="col-mid-3">
+                        <input type="checkbox" label="DoubleFault1" value="DoubleFault1" name="DoubleFault1" /> <label for="DoubleFault1">Double Fault</label>
+                    </div>
+                    <div class="col-mid-3">
+                        <input type="checkbox" label="Winner1" value="Winner1" name="Winner1" /> <label for="Winner1e">Winner</label>
+                    </div>
+                    <div class="col-mid-3">                        
+                        <input type="checkbox" label="UnforcedError1" value="UnforcedError1" name="UnforcedError1" /> <label for="UnforcedError1">Unforced Error</label>
+                    </div>
+                </div>     
             </div>
             <hr class="divider"/>
             <div class="player">
@@ -248,6 +311,10 @@ function StandardMatch() {
                     <div class="col-mid-3">
                         <h4>Points</h4>
                     </div>
+                    <div class="col-mid-1"></div>
+                    <div class="col-mid-3">
+                        <h4>Previous Sets</h4>
+                    </div>
                 </div>
                 <div class="row">
                     <div class="col-mid-3">
@@ -258,6 +325,10 @@ function StandardMatch() {
                     </div>
                     <div class="col-mid-3">
                         <h4>{pointsDisplay(player1Points, player2Points)[1]}</h4>
+                    </div>
+                    <div class="col-mid-1"></div>
+                    <div class="col-mid-3">
+                        <h4>{player2PreviousSets}</h4>
                     </div>
                 </div>                  
             </div>
